@@ -4,6 +4,7 @@
 //
 //  Created by Dalton Cherry on 7/16/14.
 //  Copyright (c) 2014-2017 Dalton Cherry.
+//  Modifications Copyright (C) 2018 Speramus, Inc.
 //
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -95,11 +96,11 @@ extension WebSocketClient {
     public func write(string: String) {
         write(string: string, completion: nil)
     }
-    
+
     public func write(data: Data) {
         write(data: data, completion: nil)
     }
-    
+
     public func write(ping: Data) {
         write(ping: ping, completion: nil)
     }
@@ -107,7 +108,7 @@ extension WebSocketClient {
     public func write(pong: Data) {
         write(pong: pong, completion: nil)
     }
-    
+
     public func disconnect() {
         disconnect(forceTimeout: nil, closeCode: CloseCode.normal.rawValue)
     }
@@ -152,7 +153,7 @@ open class FoundationStream : NSObject, WSStream, StreamDelegate  {
     let BUFFER_MAX = 4096
 
     public var enableSOCKSProxy = false
-    
+
     public func connect(url: URL, port: Int, timeout: TimeInterval, ssl: SSLSettings, completion: @escaping ((Error?) -> Void)) {
         var readStream: Unmanaged<CFReadStream>?
         var writeStream: Unmanaged<CFWriteStream>?
@@ -171,7 +172,7 @@ open class FoundationStream : NSObject, WSStream, StreamDelegate  {
                 CFReadStreamSetProperty(inputStream, propertyKey, socksConfig)
             }
         #endif
-        
+
         guard let inStream = inputStream, let outStream = outputStream else { return }
         inStream.delegate = self
         outStream.delegate = self
@@ -194,7 +195,7 @@ open class FoundationStream : NSObject, WSStream, StreamDelegate  {
                 if let sslClientCertificate = ssl.sslClientCertificate {
                     settings[kCFStreamSSLCertificates] = sslClientCertificate.streamSSLCertificates
                 }
-                
+
                 inStream.setProperty(settings, forKey: kCFStreamPropertySSLSettings as Stream.PropertyKey)
                 outStream.setProperty(settings, forKey: kCFStreamPropertySSLSettings as Stream.PropertyKey)
             #endif
@@ -219,12 +220,12 @@ open class FoundationStream : NSObject, WSStream, StreamDelegate  {
             }
             #endif
         }
-        
+
         CFReadStreamSetDispatchQueue(inStream, workQueue)
         CFWriteStreamSetDispatchQueue(outStream, workQueue)
         inStream.open()
         outStream.open()
-        
+
         var out = timeout// wait X seconds before giving up
         workQueue.async { [weak self] in
             while !outStream.hasSpaceAvailable {
@@ -244,13 +245,13 @@ open class FoundationStream : NSObject, WSStream, StreamDelegate  {
             completion(nil) //success!
         }
     }
-    
+
     public func write(data: Data) -> Int {
         guard let outStream = outputStream else {return -1}
         let buffer = UnsafeRawPointer((data as NSData).bytes).assumingMemoryBound(to: UInt8.self)
         return outStream.write(buffer, maxLength: data.count)
     }
-    
+
     public func read() -> Data? {
         guard let stream = inputStream else {return nil}
         let buf = NSMutableData(capacity: BUFFER_MAX)
@@ -261,7 +262,7 @@ open class FoundationStream : NSObject, WSStream, StreamDelegate  {
         }
         return Data(bytes: buffer, count: length)
     }
-    
+
     public func cleanup() {
         if let stream = inputStream {
             stream.delegate = nil
@@ -276,7 +277,7 @@ open class FoundationStream : NSObject, WSStream, StreamDelegate  {
         outputStream = nil
         inputStream = nil
     }
-    
+
     #if os(Linux) || os(watchOS)
     #else
     public func sslTrust() -> (trust: SecTrust?, domain: String?) {
@@ -296,11 +297,11 @@ open class FoundationStream : NSObject, WSStream, StreamDelegate  {
                 domain = peerDomain
             }
         }
-        
+
         return (trust, domain)
     }
     #endif
-    
+
     /**
      Delegate for the stream methods. Processes incoming bytes
      */
@@ -402,13 +403,13 @@ open class WebSocket : NSObject, StreamDelegate, WebSocketClient, WSStreamDelega
     /// Responds to callback about new messages coming in over the WebSocket
     /// and also connection/disconnect messages.
     public weak var delegate: WebSocketDelegate?
-    
+
     /// The optional advanced delegate can be used instead of of the delegate
     public weak var advancedDelegate: WebSocketAdvancedDelegate?
 
     /// Receives a callback for each pong message recived.
     public weak var pongDelegate: WebSocketPongDelegate?
-    
+
     public var onConnect: (() -> Void)?
     public var onDisconnect: ((Error?) -> Void)?
     public var onText: ((String) -> Void)?
@@ -463,7 +464,7 @@ open class WebSocket : NSObject, StreamDelegate, WebSocketClient, WSStreamDelega
         var decompressor:Decompressor? = nil
         var compressor:Compressor? = nil
     }
-    
+
     private var stream: WSStream
     private let mutex = NSLock()
     private var compressionState = CompressionState()
@@ -480,7 +481,7 @@ open class WebSocket : NSObject, StreamDelegate, WebSocketClient, WSStreamDelega
         mutex.unlock()
         return canWork
     }
-    
+
     /// Used for setting protocols.
     public init(request: URLRequest, protocols: [String]? = nil, stream: WSStream = FoundationStream()) {
         self.request = request
@@ -499,7 +500,7 @@ open class WebSocket : NSObject, StreamDelegate, WebSocketClient, WSStreamDelega
         }
         writeQueue.maxConcurrentOperationCount = 1
     }
-    
+
     public convenience init(url: URL, protocols: [String]? = nil) {
         var request = URLRequest(url: url)
         request.timeoutInterval = 5
@@ -615,7 +616,7 @@ open class WebSocket : NSObject, StreamDelegate, WebSocketClient, WSStreamDelega
         headerSecKey = generateWebSocketKey()
         request.setValue(headerWSVersionValue, forHTTPHeaderField: headerWSVersionName)
         request.setValue(headerSecKey, forHTTPHeaderField: headerWSKeyName)
-        
+
         if enableCompression {
             let val = "permessage-deflate; client_max_window_bits; server_max_window_bits=15"
             request.setValue(val, forHTTPHeaderField: headerWSExtensionName)
@@ -634,7 +635,7 @@ open class WebSocket : NSObject, StreamDelegate, WebSocketClient, WSStreamDelega
                 path += "?" + query
             }
         }
-        
+
         var httpBody = "\(request.httpMethod ?? "GET") \(path) HTTP/1.1\r\n"
         if let headers = request.allHTTPHeaderFields {
             for (key, val) in headers {
@@ -642,7 +643,7 @@ open class WebSocket : NSObject, StreamDelegate, WebSocketClient, WSStreamDelega
             }
         }
         httpBody += "\r\n"
-        
+
         initStreamsWithData(httpBody.data(using: .utf8)!, Int(port!))
         advancedDelegate?.websocketHttpUpgrade(socket: self, request: httpBody)
     }
@@ -732,11 +733,11 @@ open class WebSocket : NSObject, StreamDelegate, WebSocketClient, WSStreamDelega
     /**
      Delegate for the stream methods. Processes incoming bytes
      */
-    
+
     public func newBytesInStream() {
         processInputStream()
     }
-    
+
     public func streamDidError(error: Error?) {
         disconnectStream(error)
     }
@@ -899,11 +900,11 @@ open class WebSocket : NSObject, StreamDelegate, WebSocketClient, WSStreamDelega
         if code != httpSwitchProtocolCode {
             return code
         }
-        
+
         if let extensionHeader = headers[headerWSExtensionName.lowercased()] {
             processExtensionHeader(extensionHeader)
         }
-        
+
         if let acceptKey = headers[headerWSAcceptName.lowercased()] {
             if acceptKey.count > 0 {
                 if headerSecKey.count > 0 {
